@@ -1,0 +1,46 @@
+# app.yaml
+# ---------
+# Cloud Run service definition (Knative format). Deploy with:
+#
+#   gcloud run services replace app.yaml --region=us-central1
+#
+# Make sure the image below has already been built & pushed, e.g.:
+#
+#   gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/agentsville-trip-planner
+#
+# and that secrets (GOOGLE_API_KEY etc.) are set via `gcloud run services
+# update --set-env-vars` or, better, Secret Manager - see README.md.
+
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: agentsville-trip-planner
+  labels:
+    app: agentsville-trip-planner
+spec:
+  template:
+    metadata:
+      annotations:
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "3"
+    spec:
+      containerConcurrency: 20
+      timeoutSeconds: 300
+      containers:
+        - image: gcr.io/YOUR_PROJECT_ID/agentsville-trip-planner:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GEMINI_LLM_MODEL
+              value: "gemini-1.5-flash"
+            - name: GEMINI_EMBEDDING_MODEL
+              value: "models/text-embedding-004"
+            - name: GCP_BUCKET_NAME
+              value: "agentsville-knowledge-bucket"
+            # GOOGLE_API_KEY should be injected as a secret, not hard-coded:
+            # gcloud run services update agentsville-trip-planner \
+            #   --update-secrets=GOOGLE_API_KEY=agentsville-gemini-key:latest
+          resources:
+            limits:
+              cpu: "1"
+              memory: "1Gi"

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "id": "min_activities_per_day",
+      "description": "Every day must contain at least this many activities.",
+      "value": 2
+    },
+    {
+      "id": "max_trip_length_days",
+      "description": "Longest trip this demo will plan.",
+      "value": 30
+    },
+    {
+      "id": "outdoor_weather_blocklist",
+      "description": "Weather conditions that disqualify an outdoor activity.",
+      "value": ["storm", "heavy snow"]
+    }
+  ]
+}

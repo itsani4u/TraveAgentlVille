@@ -1,0 +1,26 @@
+# --- Core LLM / Agent stack ---
+langchain==0.2.16
+langchain-core==0.2.41
+langchain-community==0.2.16
+langchain-google-genai==1.0.10
+google-generativeai==0.7.2
+
+# --- Vector store / retrieval ---
+faiss-cpu==1.8.0
+pypdf==4.3.1
+
+# --- Data / validation ---
+pydantic==2.8.2
+json-repair==0.28.4
+pandas==2.2.2
+numexpr==2.10.1
+python-dotenv==1.0.1
+
+# --- Evaluation ---
+deepeval==1.0.10
+
+# --- UI ---
+streamlit==1.38.0
+
+# --- GCP ---
+google-cloud-storage==2.18.2

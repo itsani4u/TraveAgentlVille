@@ -1,0 +1,8 @@
+{
+  "metrics": [
+    {"name": "answer_relevancy", "threshold": 0.7},
+    {"name": "faithfulness", "threshold": 0.7},
+    {"name": "schema_validity", "threshold": 1.0},
+    {"name": "budget_compliance", "threshold": 1.0}
+  ]
+}
