@@ -18,9 +18,38 @@ from typing import Dict
 from deepeval import assert_test
 from deepeval.metrics import AnswerRelevancyMetric, FaithfulnessMetric
 from deepeval.test_case import LLMTestCase
+from deepeval.models import DeepEvalBaseLLM
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from agent.schemas import TravelPlan
+from agent.schemas import TravelPlan, VacationInfo
 import config
+
+
+class GeminiJudgeModel(DeepEvalBaseLLM):
+    """Points DeepEval's LLM-as-judge metrics at Gemini instead of the
+    default OpenAI model, so the whole project only ever needs
+    GOOGLE_API_KEY - no second API key for evaluation."""
+
+    def __init__(self, model_name: str = None):
+        self.model_name = model_name or config.GEMINI_LLM_MODEL
+        self.model = ChatGoogleGenerativeAI(
+            model=self.model_name,
+            google_api_key=config.GOOGLE_API_KEY,
+            temperature=0,
+        )
+
+    def load_model(self):
+        return self.model
+
+    def generate(self, prompt: str) -> str:
+        return self.model.invoke(prompt).content
+
+    async def a_generate(self, prompt: str) -> str:
+        response = await self.model.ainvoke(prompt)
+        return response.content
+
+    def get_model_name(self) -> str:
+        return f"Gemini ({self.model_name})"
 
 
 # --- Deterministic checks (no LLM call needed) --------------------------
@@ -56,8 +85,9 @@ def evaluate_narrative_quality(user_input: str, actual_output: str, retrieval_co
         retrieval_context=retrieval_context or [actual_output],
     )
 
-    relevancy = AnswerRelevancyMetric(threshold=0.7)
-    faithfulness = FaithfulnessMetric(threshold=0.7)
+    judge = GeminiJudgeModel()
+    relevancy = AnswerRelevancyMetric(threshold=0.7, model=judge)
+    faithfulness = FaithfulnessMetric(threshold=0.7, model=judge)
 
     relevancy.measure(test_case)
     faithfulness.measure(test_case)
@@ -80,6 +110,21 @@ def run_full_eval_suite(itinerary_json: str, narrative: str, user_input: str) ->
     except Exception as e:
         report["narrative_quality"] = {"error": str(e)}
     return report
+
+
+def run_integrated_agent_eval(vacation_info: VacationInfo, plan_result: Dict) -> Dict:
+    """The entry point agent.core_agent.plan_trip() calls after every real
+    run. Unlike the __main__ smoke test below (which uses static sample
+    data), this runs DeepEval + the deterministic checks directly against
+    that run's actual TravelPlan and narrative."""
+    itinerary_json = plan_result["travel_plan"].model_dump_json()
+    narrative = plan_result["narrative"]
+    user_input = (
+        f"Plan a trip to {vacation_info.destination} from {vacation_info.start_date} "
+        f"to {vacation_info.end_date} with interests {vacation_info.interests} "
+        f"and a budget of {vacation_info.total_budget}."
+    )
+    return run_full_eval_suite(itinerary_json, narrative, user_input)
 
 
 if __name__ == "__main__":

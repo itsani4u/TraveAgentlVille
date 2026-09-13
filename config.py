@@ -27,6 +27,8 @@ DATA_RLHF_PATH = BASE_DIR / "data" / "rlhf" / "feedback_store.json"
 DATA_EVAL_RUBRIC_PATH = BASE_DIR / "data" / "evaluation" / "eval_rubric.json"
 
 LOGS_DIR = BASE_DIR / "logs"
+INTERACTION_LOG_PATH = LOGS_DIR / "interactions.log"
+EVAL_LOG_PATH = LOGS_DIR / "eval_log.jsonl"
 
 # --- Gemini (LLM + embeddings) -----------------------------------------
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
@@ -41,6 +43,12 @@ MAX_REACT_STEPS = int(os.getenv("MAX_REACT_STEPS", "6"))
 GCP_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "")
 GCP_BUCKET_NAME = os.getenv("GCP_BUCKET_NAME", "agentsville-knowledge-bucket")
 GCP_REGION = os.getenv("GCP_REGION", "us-central1")
+
+# Two SEPARATE blob paths in the same bucket: one for agent interaction
+# history, one for DeepEval results. Kept apart so eval results don't get
+# mixed in with raw run logs when reviewing them later.
+GCP_INTERACTION_LOG_BLOB = os.getenv("GCP_INTERACTION_LOG_BLOB", "logs/interaction_log.log")
+GCP_EVAL_LOG_BLOB = os.getenv("GCP_EVAL_LOG_BLOB", "logs/eval_log.jsonl")
 
 # --- Logging ---------------------------------------------------------------
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

@@ -157,6 +157,11 @@ elif PAGE == "3. Chat":
             with st.expander("See the structured itinerary (JSON)"):
                 st.json(result["travel_plan"].model_dump(mode="json"))
 
+            with st.expander("DeepEval report + cloud log status"):
+                st.json(result.get("eval_report", {}))
+                st.caption(f"Interaction log: {result.get('interaction_log_upload_status')}")
+                st.caption(f"Eval log: {result.get('eval_log_upload_status')}")
+
             st.subheader("Rate this itinerary")
             colA, colB = st.columns(2)
             comment = st.text_input("Optional comment", key="feedback_comment")

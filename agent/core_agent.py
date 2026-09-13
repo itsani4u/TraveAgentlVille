@@ -8,6 +8,8 @@ runs the whole pipeline end to end:
         -> Itinerary Agent (planner.py)          [draft TravelPlan]
         -> ReAct Revision Agent (this file)       [fixed TravelPlan]
         -> Narrative Agent (planner.py)           [prose summary]
+        -> DeepEval integrated run (evaluation/)  [quality report]
+        -> Cloud logging (logging_utils.py)       [2 separate GCS log files]
 
 The ReAct loop below is written by hand (not LangChain's AgentExecutor) so
 students can see every THOUGHT -> ACTION -> OBSERVATION step explicitly,
@@ -23,6 +25,8 @@ from agent.prompts import REACT_REVISION_AGENT_SYSTEM_PROMPT
 from agent.memory import AgentMemory
 from agent.schemas import VacationInfo, TravelPlan
 from agent.planner import generate_initial_itinerary, generate_narrative_summary, get_llm
+from evaluation.deepeval_metrics import run_integrated_agent_eval
+from logging_utils import log_interaction, log_eval_result
 from tools.tool_registry import TOOL_REGISTRY
 
 
@@ -108,12 +112,35 @@ def run_react_revision(draft_plan: TravelPlan, max_steps: int = None) -> TravelP
 
 
 def plan_trip(vacation_info: VacationInfo) -> dict:
-    """The full pipeline: draft -> revise -> narrate. Returns a dict with
-    both the structured plan and the prose summary, ready for the UI."""
+    """The full pipeline: draft -> revise -> narrate -> evaluate -> log.
+
+    Every real run now (1) scores itself with DeepEval + the deterministic
+    checks, and (2) writes two separate log files - one for the
+    interaction, one for the eval report - each mirrored to its own blob
+    in the GCP bucket configured in .env. Returns a dict with the
+    structured plan, the prose summary, and the eval report, ready for
+    the UI to display."""
     draft_plan = generate_initial_itinerary(vacation_info)
     final_plan = run_react_revision(draft_plan)
     narrative = generate_narrative_summary(final_plan)
-    return {
+
+    result = {
         "travel_plan": final_plan,
         "narrative": narrative,
     }
+
+    # --- Integrated DeepEval run against this actual output ----------------
+    try:
+        eval_report = run_integrated_agent_eval(vacation_info, result)
+    except Exception as e:
+        eval_report = {"error": f"DeepEval run failed: {e}"}
+    result["eval_report"] = eval_report
+
+    # --- Cloud logging: two separate log files -----------------------------
+    vacation_info_dict = vacation_info.model_dump(mode="json")
+    travel_plan_dict = final_plan.model_dump(mode="json")
+
+    result["interaction_log_upload_status"] = log_interaction(vacation_info_dict, travel_plan_dict, narrative)
+    result["eval_log_upload_status"] = log_eval_result(vacation_info_dict, eval_report)
+
+    return result
